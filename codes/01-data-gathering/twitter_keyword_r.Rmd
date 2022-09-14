@@ -1,0 +1,105 @@
+---
+title: "Keywords Searching using Twitter API in R"
+output: html_document
+date: "2022-09-14"
+---
+## Data Code Link
+[Tweets text data can be found here ](https://github.com/anly501/anly-501-project-yeyaxin1103/tree/main/data/00-raw-data/twitter_api_data)
+
+## Data Gathering Method & Data Source Explained
+In this part, I searched the keyword "fertility rate" using Twitter API in Korean, Japanese, and Chinese. The purpose is to explore people's perspectives in East Asia when they talk about the birth rate issue. 
+
+The reason why I chose to conduct the keyword searching in these three languages not only because they are the mostly used languages in Eastern Asia but also because people there tend to express their opinions in their first languages due to limited and inconsistent English education levels in that region. 
+
+The purpose of gathering Tweets data is for future word clouds generations and possible sentiment analysis. 
+
+## Data Gathering Process using Twitter API in R
+```{r, warning=FALSE, error=FALSE, message=FALSE}
+library(selectr)
+library(rvest)
+library(xml2)
+library(rtweet) # for scraping tweets
+library(wordcloud2) # for generating really cool looking word clouds
+library(NLP) #required to load tm
+library(tm) # for text mining
+library(dplyr) # loads of fun stuff including piping
+library(ROAuth)
+library(jsonlite)
+library(httpuv)
+```
+
+Setting API parameters
+```{r, warning=FALSE, error=FALSE, message=FALSE}
+api = read.csv('twitter_api_info.txt')
+
+consumer_key = as.character(api[api["Type"] == "Consumer Key"][2])
+consumer_secret = as.character(api[api["Type"] == "Consumer Secret"][2])
+access_token = as.character(api[api["Type"] == "Access Token"][2])
+access_token_secret = as.character(api[api["Type"] == "Access Token Secret"][2])
+bearer_token = as.character(api[api["Type"] == "Bearer Token"][2])
+```
+
+Extracting tweets
+```{r, warning=FALSE, error=FALSE, message=FALSE}
+library(twitteR)
+library(rtweet)
+
+s_key_kr = '출생률'
+s_key_jp = '出生率'
+s_key_cn = '生育率'
+
+n_tweets = 500
+
+twitteR::setup_twitter_oauth(consumer_key, consumer_secret, access_token, access_token_secret)
+
+auth_setup_default()
+
+#Search_kr <- twitteR::searchTwitter(s_key_kr, n = n_tweets, since = "2017-01-01")
+#Search_jp <- twitteR::searchTwitter(s_key_jp, n = n_tweets, since = "2017-01-01")
+#Search_cn <- twitteR::searchTwitter(s_key_cn, n = n_tweets, since = "2017-01-01")
+
+#TweetsDF_kr <- twListToDF(Search_kr)
+#TweetsDF_jp <- twListToDF(Search_jp)
+#TweetsDF_cn <- twListToDF(Search_cn)
+
+Tweets_kr <- search_tweets(s_key_kr, n_tweets, lang = 'ko')
+Tweets_jp <- search_tweets(s_key_jp, n_tweets, lang = 'ja')
+Tweets_cn <- search_tweets(s_key_cn, n_tweets)
+```
+
+Take a closer look at the example tweets that were pulled using the keyword "birth rate" in Korean, Japanese, and Chinese:
+```{r, warning=FALSE, error=FALSE, message=FALSE}
+##Example Korean tweet:
+Tweets_kr$text[3]
+
+###Example Japanese tweet:
+Tweets_jp$text[4]
+
+####Example Chinese tweet:
+Tweets_cn$text[5]
+```
+
+```{r, warning=FALSE, error=FALSE, message=FALSE}
+## Saving the tweets to files
+fname_kr = "./tweetsKR.txt"
+fname_jp = "./tweetsJP.txt"
+fname_cn = "./tweetsCN.txt"
+
+## Start the files
+file_kr <- file(fname_kr)
+file_jp <- file(fname_jp)
+file_cn <- file(fname_cn)
+
+## Write tweets to the files
+cat(unlist(Tweets_kr), " ", file=file_kr, sep="\n")
+cat(unlist(Tweets_jp), " ", file=file_jp, sep="\n")
+cat(unlist(Tweets_cn), " ", file=file_cn, sep="\n")
+```
+
+## Snapshots of the Raw Twitter Text Data Gathered
+Now we can take a look at the screenshots of the Tweets we pulled from Twitter using the keyword "birth rate" in Korean, Japanese, and Chinese.
+```{r, warning=FALSE, error=FALSE, message=FALSE}
+knitr::include_graphics("./tweetsKR_snapshot.png")
+knitr::include_graphics("./tweetsJP_snapshot.png")
+knitr::include_graphics("./tweetsCN_snapshot.png")
+```
