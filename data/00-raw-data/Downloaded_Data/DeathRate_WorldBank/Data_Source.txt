@@ -1,0 +1,6 @@
+Source:
+World Bank
+
+Death rate, crude (per 1,000 people)
+
+https://data.worldbank.org/indicator/SP.DYN.CDRT.IN?end=2020&most_recent_value_desc=false&start=1960&view=map&year=2020
