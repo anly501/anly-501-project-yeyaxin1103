@@ -1,0 +1,58 @@
+from sklearn.feature_extraction.text import CountVectorizer
+import numpy as np
+import string
+import nltk
+# nltk.download('words')
+# nltk.download('punkt')
+# nltk.download('averaged_perceptron_tagger')
+# nltk.download('wordnet')
+# nltk.download('stopwords')
+# nltk.download([
+#     "names",
+#     "stopwords",
+#     "state_union",
+#     "twitter_samples",
+#     "movie_reviews",
+#     "averaged_perceptron_tagger",
+#     "vader_lexicon",
+#     "punkt",
+# ])
+import re
+
+
+# read text file as a list by line without \n
+with open("../../data/01-modified-data/tweetEN_corpus_clean", "r") as file:
+    tweetEN = file.read().splitlines()
+    
+# 
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
+sia = SentimentIntensityAnalyzer()
+
+## Sentence Segmentation -- already done at the last step
+
+## Sentiment Analysis
+from nltk.sentiment import SentimentIntensityAnalyzer
+sia = SentimentIntensityAnalyzer()
+
+def SIA(str_list):
+    sia_list = []
+    for txt in str_list:
+        score = sia.polarity_scores(txt)
+        sia_list.append(score)
+    return sia_list
+        
+tweet_sia = SIA(tweetEN)
+
+# turn sentiment intensity into a dataframe
+import pandas as pd
+siaDF = pd.DataFrame(tweet_sia)
+
+negMean = (siaDF[['neg']].mean())['neg']
+posMean = (siaDF[['pos']].mean())['pos']
+neuMean = (siaDF[['neu']].mean())['neu']
+comMean = (siaDF[['compound']].mean())['compound']
+
+siaMeanDF = pd.DataFrame(data = {'negative': [negMean], 'positive': [posMean], 'neutral': [neuMean], 'compound': [comMean]}) 
+
+# plot the sentiment intensity as bar chart
+siaPlot = siaMeanDF.plot.bar()
