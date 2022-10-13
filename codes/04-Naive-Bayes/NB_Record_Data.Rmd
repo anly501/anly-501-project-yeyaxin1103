@@ -1,0 +1,105 @@
+---
+title: "Naïve Bayes in R with Labeled Record Data"
+output: html_document
+---
+
+### Introduction
+In this page, I will demonstrate how I apply Naïve Bayes model(s) to labeled record using R, as well as the result of the predictions using the trained NB model(s).
+
+### Data Source and Preparation
+The data I will be using in this part was the record data (FertilityRate_Clean.csv) cleaned and labeled in the previous data cleaning section, which can be found [here](https://github.com/anly501/anly-501-project-yeyaxin1103/tree/main/data/01-modified-data). The code for data cleaning and labeling can be found [here](https://github.com/anly501/anly-501-project-yeyaxin1103/tree/main/codes/02-data-cleaning). The general information of this data set will be displayed below, and each record is labeled as either "Above Replacement" or "Below Replacement" based on its "FertilityRate" column value.
+```{r, message=FALSE, error=FALSE, warning=FALSE}
+# read csv file to DataFrame
+df <- read.csv("../../data/01-modified-data/FertilityRate_Clean.csv")
+str(df)
+```
+Select the features needed for model training, in this case we only need columns "GDPperCapita_USD", "Human_Dev_Index", "Tertiary_school_Enroll_Pctg", "Region" as input X and column "label" as output y. Also to rename the factor levels of column "Region" ("East Asia & Pacific" as 1, "Europe & Central Asia" as 2, "Latin America & Caribbean" as 3, "Middle East & North Africa" as 4, "North America" as 5, "South Asia" as 6, "Sub-Saharan Africa" as 7).
+```{r, message=FALSE, error=FALSE, warning=FALSE}
+df$label <- as.factor(df$label)
+df$Region <- as.factor(df$Region)
+levels(df$Region) <- c(1, 2, 3, 4, 5, 6, 7)
+df <- df[, c("label", "GDPperCapita_USD", "Human_Dev_Index", "Tertiary_school_Enroll_Pctg", "Region")]
+str(df)
+```
+Load Relevant Packages
+```{r, message=FALSE, error=FALSE, warning=FALSE}
+library(naivebayes)
+library(dplyr)
+library(ggplot2)
+library(psych)
+```
+
+### Data Normalization
+```{r, message=FALSE, error=FALSE, warning=FALSE}
+# Normalize numeric data
+df$GDPperCapita_USD <- (df$GDPperCapita_USD - mean(df$GDPperCapita_USD)) / sd(df$GDPperCapita_USD)
+df$Human_Dev_Index <- (df$Human_Dev_Index - mean(df$Human_Dev_Index)) / sd(df$Human_Dev_Index)
+df$Tertiary_school_Enroll_Pctg <- (df$Tertiary_school_Enroll_Pctg - mean(df$Tertiary_school_Enroll_Pctg)) / sd(df$Tertiary_school_Enroll_Pctg)
+head(df)
+```
+
+### Data Exploration & Visualization
+```{r, message=FALSE, error=FALSE, warning=FALSE}
+df %>% ggplot(aes(x = label, y = GDPperCapita_USD, fill = label)) +
+  geom_boxplot() + ggtitle("Country GDP/Capita and Fertility Rate")
+
+df %>% ggplot(aes(x = Human_Dev_Index, fill = label)) + 
+  geom_density(alpha = 0.8, color = "black") + ggtitle("Country Human Development Index and Fertility Rate")
+
+df %>% ggplot(aes(x = Tertiary_school_Enroll_Pctg, fill = label)) + 
+  geom_density(alpha = 0.8, color = "black") + ggtitle("Country Higher Education Enrollment and Fertility Rate")
+
+df %>% ggplot(aes(x = Region, fill = label)) + 
+  geom_density(alpha = 0.8, color = "black") + ggtitle("Country Region and Fertility Rate")
+```
+
+Interpretation: From the plots above we can see that:
+
+a) On average, countries/regions with a below replacement rate fertility have higher GDP/capita than the ones with above replacement rate fertility;
+b) Although there is a partial amount of overlap, countries/regions with a below replacement rate fertility tend to have higher human development index than the ones with above replacement rate fertility;
+c) The tertiary school enrollment percentage of countries/regions with above replacement rate fertility are heavily right-skewed, meaning the tertiary school enrollment there mostly below average (The enrollment percentage of higher education is low). Although countries/regions with above replacement rate fertility are right-skewed as well but we can see the percentage are higher than former ones.
+
+The plots show there is potential to develop a classification model.
+
+### Data Partition using 80/20 Rule
+```{r, message=FALSE, error=FALSE, warning=FALSE}
+set.seed(123)
+ind <- sample(2, nrow(df), replace = T, prob = c(0.8, 0.2))
+train <- df[ind == 1,]
+test <- df[ind == 2,]
+```
+
+### Naive Bayes Model
+```{r, message=FALSE, error=FALSE, warning=FALSE}
+nb <- naive_bayes(label ~ ., data = train)
+nb
+```
+The Naive Bayes model information above show that in the training data, there are about 64.3% of the data points belonging to above replacement category, and about 35.7% belonging to below replacement category. For each quantitative variable in the data set (*Human_Dev_Index*, *GDPperCapita_USD*, *Tertiary_school_Enroll_Pctg* in this case), the mean and standard deviation are calculated. For the categorical variable *Region*, the probabilities are given.
+
+```{r, message=FALSE, error=FALSE, warning=FALSE}
+plot(nb)
+```
+
+By plotting the NB model, we see that the first three density plots look similar to the ones generated previously. Plot 4 illustrates the chances of countries from a specific region having a below/above replacement fertility rate.
+
+### Model Prediction & Confusion Matrix
+#### Predicting Training Data
+```{r, message=FALSE, error=FALSE, warning=FALSE}
+train_pred <- predict(nb, train)
+(tab1 <- table(train_pred, train$label))
+# mis-classification rate
+1 - sum(diag(tab1)) / sum(tab1)
+```
+Based on the confusion matrix and misclassification rate generated above, we can see that 4003 (2676 + 1327) out of 4600 records in the training dataset were predicted correctly, and the misclassification rate of the model is about 12.98%.
+
+#### Predicting Testing Data
+```{r, message=FALSE, error=FALSE, warning=FALSE}
+test_pred <- predict(nb, test)
+(tab2 <- table(test_pred, test$label))
+# mis-classification rate
+1 - sum(diag(tab2)) / sum(tab2)
+```
+
+Based on the confusion matrix and misclassification rate generated above, we can see that 990 (632 + 358) out of 1135 records in the testing dataset were predicted correctly, and the misclassification rate of the model is about 12.78%.
+
+Therefore, it can be concluded that this trained Naive Bayes model did a okay job on prediction with about 87% accuracy rate on both training and testing data.
